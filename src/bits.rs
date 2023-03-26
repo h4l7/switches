@@ -263,12 +263,10 @@ impl<const N: usize> Converge<N> {
     }
 }
 
-// TODO this should be breadth-first (but current implementation eats memory)
 impl<const N: usize> Iterator for Converge<N> {
     type Item = Bits<N>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        // println!("HASH {:?} VEC {:?}", self.seen.len(), self.pending.len());
         if !self.initialized {
             self.initialized = true;
 
@@ -297,12 +295,18 @@ impl<const N: usize> Iterator for Converge<N> {
                     }
 
                     if !self.seen.contains(&next) {
-                        self.pending.push_front(next);
+                        self.pending.push_back(next);
                     }
                 }
 
                 if self.seen.contains(&self.cursor) {
-                    self.cursor = self.pending.pop_front().unwrap();
+                    while self.seen.contains(&self.cursor) {
+                        if self.pending.is_empty() {
+                            return None;
+                        }
+
+                        self.cursor = self.pending.pop_front().unwrap();
+                    }
 
                     continue;
                 }

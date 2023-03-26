@@ -4,8 +4,8 @@ mod bits;
 use bits::Bits;
 
 fn main() {
-    let b0: Bits<12> = Bits::from_str("000000000000").unwrap();
-    let b1: Bits<12> = Bits::from_str("111111111111").unwrap();
+    let b0: Bits<20> = Bits::from_str("00000000000000000000").unwrap();
+    let b1: Bits<20> = Bits::from_str("11111111111111111111").unwrap();
     // let t0 = b0.upper_shadow();
 
     // for t in t0 {
