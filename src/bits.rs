@@ -384,7 +384,7 @@ impl<const N: usize> Iterator for Paths<N> {
         for i in diff.ones() {
             let mut next = cursor;
             next[i] = true;
-            self.pending.push_back((next, base.clone()));
+            self.pending.push_front((next, base.clone()));
         }
 
         self.next()
