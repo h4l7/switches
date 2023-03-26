@@ -4,8 +4,8 @@ mod bits;
 use bits::Bits;
 
 fn main() {
-    let b0: Bits<24> = Bits::from_str("000000000000000000000000").unwrap();
-    let b1: Bits<24> = Bits::from_str("111111111111111111111111").unwrap();
+    let b0: Bits<12> = Bits::from_str("000000000000").unwrap();
+    let b1: Bits<12> = Bits::from_str("111111111111").unwrap();
     // let t0 = b0.upper_shadow();
 
     // for t in t0 {
@@ -15,11 +15,11 @@ fn main() {
     // let t1 = b0.lower_shadow();
     // println!("{}\n{:?}\n{:?}\n{:?}\n{:?}", b0, t0, t1, t2, t3);
 
-    let t4 = b0.midpoints(&b1).unwrap();
+    let t4 = b0.converge(&b1).unwrap();
     let mut count = 0_usize;
 
     for t in t4 {
-        println!("{:?}", t);
+        println!("{:?} {:?}", count, t);
         count += 1;
     }
 

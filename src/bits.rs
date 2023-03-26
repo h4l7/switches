@@ -257,12 +257,18 @@ impl<const N: usize> Converge<N> {
             initialized,
         })
     }
+
+    fn inner_next(&mut self) {
+
+    }
 }
 
+// TODO this should be breadth-first (but current implementation eats memory)
 impl<const N: usize> Iterator for Converge<N> {
     type Item = Bits<N>;
 
     fn next(&mut self) -> Option<Self::Item> {
+        // println!("HASH {:?} VEC {:?}", self.seen.len(), self.pending.len());
         if !self.initialized {
             self.initialized = true;
 
@@ -275,30 +281,36 @@ impl<const N: usize> Iterator for Converge<N> {
             // Safe to `unwrap` since we've checked for `is_empty`
             self.cursor = self.pending.pop_front().unwrap();
 
-            let diff = self.cursor ^ self.target;
-            let ones = diff.ones();
+            loop {
+                let diff = self.cursor ^ self.target;
+                let ones = diff.ones();
 
-            for i in ones {
-                let mut next = self.cursor;
+                for i in ones {
+                    let mut next = self.cursor;
 
-                if self.reversed {
-                    // We need to drop our ones
-                    next[i] = false;
-                } else {
-                    // We need to insert our ones
-                    next[i] = true;
+                    if self.reversed {
+                        // We need to drop our ones
+                        next[i] = false;
+                    } else {
+                        // We need to insert our ones
+                        next[i] = true;
+                    }
+
+                    if !self.seen.contains(&next) {
+                        self.pending.push_front(next);
+                    }
                 }
 
-                self.pending.push_back(next);
+                if self.seen.contains(&self.cursor) {
+                    self.cursor = self.pending.pop_front().unwrap();
+
+                    continue;
+                }
+
+                self.seen.insert(self.cursor);
+
+                return Some(self.cursor);
             }
-
-            if self.seen.contains(&self.cursor) {
-                return self.next();
-            }
-
-            self.seen.insert(self.cursor);
-
-            return Some(self.cursor);
         }
 
         None
