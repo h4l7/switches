@@ -158,6 +158,7 @@ impl<const N: usize> Midpoints<N> {
             let count = size / 2;
 
             combs_lower = diff.ones().combinations(count);
+            // TODO might be more efficient to use an enum here
             combs_upper = diff.ones().combinations(0);
         } else {
             let count_lower = size / 2;
@@ -206,12 +207,66 @@ impl<const N: usize> Iterator for Midpoints<N> {
 }
 
 #[derive(Debug)]
+enum HorizonIndices<const N: usize> {
+    Upper(Zeroes<N>),
+    Lower(Ones<N>),
+}
+
+#[derive(Debug)]
+pub struct Horizon<const N: usize> {
+    origin: Bits<N>,
+    indices: HorizonIndices<N>,
+    lower: bool,
+}
+
+impl<const N: usize> Horizon<N> {
+    fn new(origin: &Bits<N>, lower: bool) -> Self {
+        let indices = if lower {
+            HorizonIndices::Lower(origin.ones())
+        } else {
+            HorizonIndices::Upper(origin.zeroes())
+        };
+
+        Self {
+            origin: *origin,
+            indices,
+            lower,
+        }
+    }
+}
+
+impl<const N: usize> Iterator for Horizon<N> {
+    type Item = Bits<N>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let maybe_index = match self.indices {
+            HorizonIndices::Upper(ref mut zeroes) => zeroes.next(),
+            HorizonIndices::Lower(ref mut ones) => ones.next(),
+        };
+
+        if let Some(i) = maybe_index {
+            let mut next = self.origin;
+
+            if self.lower {
+                next[i] = false;
+            } else {
+                next[i] = true;
+            }
+
+            Some(next)
+        } else {
+            None
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct Converge<const N: usize> {
     cursor: Bits<N>,
     origin: Bits<N>,
     target: Bits<N>,
     seen: HashSet<Bits<N>>,
-    pending: VecDeque<Bits<N>>,
+    pending: VecDeque<Horizon<N>>,
     reversed: bool,
     initialized: bool,
 }
@@ -226,26 +281,11 @@ impl<const N: usize> Converge<N> {
         let target = *end;
         let cursor = origin;
         let seen = HashSet::<Bits<N>>::new();
-        let mut pending = VecDeque::<Bits<N>>::new();
+        let mut pending = VecDeque::<Horizon<N>>::new();
         let reversed = origin > target;
         let initialized = false;
 
-        let diff = cursor ^ target;
-        let ones = diff.ones();
-
-        for i in ones {
-            let mut next = cursor;
-
-            if reversed {
-                // We need to drop our ones
-                next[i] = false;
-            } else {
-                // We need to insert our ones
-                next[i] = true;
-            }
-
-            pending.push_back(next);
-        }
+        pending.push_back(Horizon::new(&origin, reversed));
 
         Ok(Self {
             cursor,
@@ -257,10 +297,6 @@ impl<const N: usize> Converge<N> {
             initialized,
         })
     }
-
-    fn inner_next(&mut self) {
-
-    }
 }
 
 impl<const N: usize> Iterator for Converge<N> {
@@ -270,50 +306,22 @@ impl<const N: usize> Iterator for Converge<N> {
         if !self.initialized {
             self.initialized = true;
 
-            return Some(self.cursor);
+            return Some(self.origin);
         } else if self.origin == self.target {
             return None;
         }
 
-        if !self.pending.is_empty() {
-            // Safe to `unwrap` since we've checked for `is_empty`
-            self.cursor = self.pending.pop_front().unwrap();
-
-            loop {
-                let diff = self.cursor ^ self.target;
-                let ones = diff.ones();
-
-                for i in ones {
-                    let mut next = self.cursor;
-
-                    if self.reversed {
-                        // We need to drop our ones
-                        next[i] = false;
-                    } else {
-                        // We need to insert our ones
-                        next[i] = true;
-                    }
-
-                    if !self.seen.contains(&next) {
-                        self.pending.push_back(next);
-                    }
-                }
-
-                if self.seen.contains(&self.cursor) {
-                    while self.seen.contains(&self.cursor) {
-                        if self.pending.is_empty() {
-                            return None;
-                        }
-
-                        self.cursor = self.pending.pop_front().unwrap();
-                    }
-
+        while let Some(mut horizon) = self.pending.pop_front() {
+            while let Some(next) = horizon.next() {
+                if self.seen.contains(&next) {
                     continue;
                 }
 
-                self.seen.insert(self.cursor);
+                self.pending.push_back(Horizon::new(&next, self.reversed));
+                self.pending.push_front(horizon);
+                self.seen.insert(next);
 
-                return Some(self.cursor);
+                return Some(next);
             }
         }
 
@@ -332,6 +340,7 @@ pub struct Paths<const N: usize> {
     done: bool,
 }
 
+/// Depth-first paths
 impl<const N: usize> Paths<N> {
     fn new(start: &Bits<N>, end: &Bits<N>) -> Result<Self, IncomparableError> {
         if start.partial_cmp(end).is_none() {
@@ -479,6 +488,10 @@ impl<const N: usize> Bits<N> {
         }
 
         Ok((*self ^ *other).count_ones())
+    }
+    
+    pub fn horizon(&self, lower: bool) -> Horizon<N> {
+        Horizon::new(self, lower)
     }
 
     pub fn midpoints(&self, other: &Bits<N>) -> Result<Midpoints<N>, IncomparableError> {
@@ -738,5 +751,121 @@ impl<const N: usize> fmt::Display for Bits<N> {
         }
 
         write!(f, "{}", out)
+    }
+}
+
+#[derive(Debug)]
+pub struct OverflowError;
+
+impl fmt::Display for OverflowError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "OverflowError")
+    }
+}
+
+impl Error for OverflowError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        None
+    }
+}
+
+impl<const N: usize> TryFrom<u8> for Bits<N> {
+    type Error = OverflowError;
+
+    fn try_from(x: u8) -> Result<Bits<N>, Self::Error> {
+        let mut bits = Bits::<N>::new(false);
+
+        for i in 0..8 {
+            let bit = (x << (7 - i)) & 0x80 == 0x80;
+
+            if i + 1 > N && bit {
+                return Err(OverflowError);
+            } else if bit {
+                bits[N - i - 1] = true;
+            }
+        }
+
+        Ok(bits)
+    }
+}
+
+impl<const N: usize> TryFrom<u16> for Bits<N> {
+    type Error = OverflowError;
+
+    fn try_from(x: u16) -> Result<Bits<N>, Self::Error> {
+        let mut bits = Bits::<N>::new(false);
+
+        for i in 0..16 {
+            let bit = (x << (15 - i)) & 0x8000 == 0x8000;
+
+            if i + 1 > N && bit {
+                return Err(OverflowError);
+            } else if bit {
+                bits[N - i - 1] = true;
+            }
+        }
+
+        Ok(bits)
+    }
+}
+
+impl<const N: usize> TryFrom<u32> for Bits<N> {
+    type Error = OverflowError;
+
+    fn try_from(x: u32) -> Result<Bits<N>, Self::Error> {
+        let mut bits = Bits::<N>::new(false);
+
+        for i in 0..32 {
+            let bit = (x << (32 - i)) & 0x80000000 == 0x80000000;
+
+            if i + 1 > N && bit {
+                return Err(OverflowError);
+            } else if bit {
+                bits[N - i - 1] = true;
+            }
+        }
+
+        Ok(bits)
+    }
+}
+
+impl<const N: usize> TryFrom<u64> for Bits<N> {
+    type Error = OverflowError;
+
+    fn try_from(x: u64) -> Result<Bits<N>, Self::Error> {
+        let mut bits = Bits::<N>::new(false);
+
+        for i in 0..64 {
+            let bit = (x << (63 - i)) & 0x8000000000000000 == 0x8000000000000000;
+
+            if i + 1 > N && bit {
+                return Err(OverflowError);
+            } else if bit {
+                bits[N - i - 1] = true;
+            }
+        }
+
+        Ok(bits)
+    }
+}
+
+impl<const N: usize> TryFrom<u128> for Bits<N> {
+    type Error = OverflowError;
+
+    fn try_from(x: u128) -> Result<Bits<N>, Self::Error> {
+        let mut bits = Bits::<N>::new(false);
+
+        for i in 0..128 {
+            let bit = (x << (127 - i)) & 0x80000000000000000000000000000000
+                == 0x80000000000000000000000000000000;
+
+            if i + 1 > N && bit {
+                return Err(OverflowError);
+            } else if bit {
+                bits[N - i - 1] = true;
+            }
+        }
+
+        Ok(bits)
     }
 }
