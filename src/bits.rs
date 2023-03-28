@@ -489,7 +489,7 @@ impl<const N: usize> Bits<N> {
 
         Ok((*self ^ *other).count_ones())
     }
-    
+
     pub fn horizon(&self, lower: bool) -> Horizon<N> {
         Horizon::new(self, lower)
     }

@@ -1,11 +1,11 @@
-use std::{collections::HashSet, fs::File, hash::Hash, io::Write, str::FromStr};
+use std::{collections::HashSet, fs::File, io::Write, str::FromStr};
 mod bits;
 use bits::Bits;
 use petgraph::{
     dot::{Config, Dot},
-    Graph, graph::UnGraph, Undirected,
+    graph::{NodeIndex},
+    Graph, Undirected,
 };
-use petgraph::graph::NodeIndex;
 use std::collections::HashMap;
 
 #[derive(Clone, Debug)]
