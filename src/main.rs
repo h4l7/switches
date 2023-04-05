@@ -3,7 +3,7 @@ mod bits;
 use bits::Bits;
 use petgraph::{
     dot::{Config, Dot},
-    graph::{NodeIndex},
+    graph::NodeIndex,
     Graph, Undirected,
 };
 use std::collections::HashMap;
