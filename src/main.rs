@@ -1,12 +1,14 @@
 use std::{collections::HashSet, fs::File, io::Write, str::FromStr};
 mod bits;
 use bits::Bits;
+mod util;
 use petgraph::{
     dot::{Config, Dot},
     graph::NodeIndex,
     Graph, Undirected,
 };
-use std::collections::HashMap;
+use rand::{thread_rng, Rng};
+use std::{collections::HashMap, hash::Hash};
 
 #[derive(Clone, Debug)]
 pub struct MonotoneFunction<const N: usize> {
@@ -33,10 +35,7 @@ impl<const N: usize> MonotoneFunction<N> {
     }
 
     pub fn call(&self, x: Bits<N>) -> bool {
-        self.implicants
-            .iter()
-            .map(|a| *a & x == *a)
-            .fold(false, |a, b| a || b)
+        self.implicants.iter().map(|a| *a & x == *a).any(|b| b)
     }
 }
 
@@ -142,32 +141,32 @@ const K: usize = 4;
 fn main() {
     let mut bs = Vec::<Bits<K>>::new();
 
-    for n in 0..2_u64.pow(K as u32) {
+    for n in 0..2_u32.pow(K as u32) {
         let b = n.try_into().unwrap();
         bs.push(b);
     }
 
-    let f = MonotoneFunction::<K>::new(vec![
-        Bits::<K>::from_str("1010").unwrap(),
-        Bits::<K>::from_str("1000").unwrap(),
-    ]);
+    // let f = MonotoneFunction::<K>::new(vec![
+    //     Bits::<K>::from_str("1010").unwrap(),
+    //     Bits::<K>::from_str("1000").unwrap(),
+    // ]);
 
-    let mut learner = Learner::<K>::new(f);
+    // let mut learner = Learner::<K>::new(f);
 
-    let dot = format!(
-        "{:?}",
-        Dot::with_config(&learner.graph(), &[Config::EdgeNoLabel])
-    );
-    let mut out = File::create("./test0.dot").expect("Unable to create file");
-    out.write_all(dot.as_bytes()).expect("Unable to write data");
+    // let dot = format!(
+    //     "{:?}",
+    //     Dot::with_config(&learner.graph(), &[Config::EdgeNoLabel])
+    // );
+    // let mut out = File::create("./test0.dot").expect("Unable to create file");
+    // out.write_all(dot.as_bytes()).expect("Unable to write data");
 
-    learner.iterate();
-    learner.iterate();
+    // learner.iterate();
+    // learner.iterate();
 
-    let dot = format!(
-        "{:?}",
-        Dot::with_config(&learner.graph(), &[Config::EdgeNoLabel])
-    );
-    let mut out = File::create("./test1.dot").expect("Unable to create file");
-    out.write_all(dot.as_bytes()).expect("Unable to write data");
+    // let dot = format!(
+    //     "{:?}",
+    //     Dot::with_config(&learner.graph(), &[Config::EdgeNoLabel])
+    // );
+    // let mut out = File::create("./test1.dot").expect("Unable to create file");
+    // out.write_all(dot.as_bytes()).expect("Unable to write data");
 }

@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use crate::util::rand_combination;
 use itertools::{Combinations, Itertools};
 use std::{
     cmp::Ordering,
@@ -776,7 +777,7 @@ impl<const N: usize> TryFrom<u8> for Bits<N> {
         let mut bits = Bits::<N>::new(false);
 
         for i in 0..8 {
-            let bit = (x << (7 - i)) & 0x80 == 0x80;
+            let bit = (x >> i) & 0x01 == 0x01;
 
             if i + 1 > N && bit {
                 return Err(OverflowError);
@@ -796,7 +797,7 @@ impl<const N: usize> TryFrom<u16> for Bits<N> {
         let mut bits = Bits::<N>::new(false);
 
         for i in 0..16 {
-            let bit = (x << (15 - i)) & 0x8000 == 0x8000;
+            let bit = (x >> i) & 0x01 == 0x01;
 
             if i + 1 > N && bit {
                 return Err(OverflowError);
@@ -816,7 +817,7 @@ impl<const N: usize> TryFrom<u32> for Bits<N> {
         let mut bits = Bits::<N>::new(false);
 
         for i in 0..32 {
-            let bit = (x << (32 - i)) & 0x80000000 == 0x80000000;
+            let bit = (x >> i) & 0x01 == 0x01;
 
             if i + 1 > N && bit {
                 return Err(OverflowError);
@@ -836,7 +837,7 @@ impl<const N: usize> TryFrom<u64> for Bits<N> {
         let mut bits = Bits::<N>::new(false);
 
         for i in 0..64 {
-            let bit = (x << (63 - i)) & 0x8000000000000000 == 0x8000000000000000;
+            let bit = (x >> i) & 0x01 == 0x01;
 
             if i + 1 > N && bit {
                 return Err(OverflowError);
@@ -856,8 +857,7 @@ impl<const N: usize> TryFrom<u128> for Bits<N> {
         let mut bits = Bits::<N>::new(false);
 
         for i in 0..128 {
-            let bit = (x << (127 - i)) & 0x80000000000000000000000000000000
-                == 0x80000000000000000000000000000000;
+            let bit = (x >> i) & 0x01 == 0x01;
 
             if i + 1 > N && bit {
                 return Err(OverflowError);
