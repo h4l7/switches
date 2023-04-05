@@ -1,14 +1,13 @@
-use std::{collections::HashSet, fs::File, io::Write, str::FromStr};
+use std::{collections::HashSet};
 mod bits;
 use bits::Bits;
 mod util;
 use petgraph::{
-    dot::{Config, Dot},
     graph::NodeIndex,
     Graph, Undirected,
 };
-use rand::{thread_rng, Rng};
-use std::{collections::HashMap, hash::Hash};
+
+use std::{collections::HashMap};
 
 #[derive(Clone, Debug)]
 pub struct MonotoneFunction<const N: usize> {
