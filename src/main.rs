@@ -2,8 +2,12 @@ use std::collections::HashSet;
 mod bits;
 use bits::Bits;
 mod util;
-use petgraph::{graph::NodeIndex, Graph, Undirected};
-use std::{collections::HashMap, str::FromStr};
+use petgraph::{
+    dot::{Config, Dot},
+    graph::NodeIndex,
+    Graph, Undirected,
+};
+use std::{collections::HashMap, fs::File, io::Write, str::FromStr};
 
 #[derive(Clone, Debug)]
 pub struct MonotoneFunction<const N: usize> {
@@ -127,7 +131,7 @@ impl<const N: usize> Learner<N> {
     }
 }
 
-const K: usize = 8;
+const K: usize = 4;
 
 fn main() {
     let mut bs = Vec::<Bits<K>>::new();
@@ -137,43 +141,59 @@ fn main() {
         bs.push(b);
     }
 
-    let b0 = Bits::<K>::from_str("00000000").unwrap();
-    let b1 = Bits::<K>::from_str("11111111").unwrap();
-    let mut cs = [0_usize; K];
+    let f = MonotoneFunction::<K>::new(vec![Bits::<K>::from_str("1010").unwrap()]);
 
-    for _ in 0..100000 {
-        let t0 = b1.rand_midpoint(&b0).unwrap();
+    let mut learner = Learner::<K>::new(f);
 
-        for j in 0..t0.len() {
-            if t0[j] {
-                cs[j] += 1;
+    let dot = format!(
+        "{:?}",
+        Dot::with_config(&learner.graph(), &[Config::EdgeNoLabel])
+    );
+    let mut out = File::create("./test0.dot").expect("Unable to create file");
+    out.write_all(dot.as_bytes()).expect("Unable to write data");
+
+    learner.iterate();
+    learner.iterate();
+
+    let dot = format!(
+        "{:?}",
+        Dot::with_config(&learner.graph(), &[Config::EdgeNoLabel])
+    );
+    let mut out = File::create("./test1.dot").expect("Unable to create file");
+    out.write_all(dot.as_bytes()).expect("Unable to write data");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use float_cmp::approx_eq;
+
+    const N: usize = 8;
+
+    #[test]
+    fn test_midpoint_distribution() {
+        let eet = Bits::<N>::new(false);
+        let tee = Bits::<N>::new(true);
+        let count = 100000_usize;
+        let mut counts = [0_usize; N];
+
+        for _ in 0..count {
+            let t0 = eet.rand_midpoint(&tee).unwrap();
+
+            for j in 0..t0.len() {
+                if t0[j] {
+                    counts[j] += 1;
+                }
             }
         }
+
+        let mut dist = [0_f64; N];
+
+        for i in 0..N {
+            dist[i] = counts[i] as f64 / count as f64;
+            assert!(approx_eq!(f64, dist[i], 0.5, epsilon = 0.01));
+        }
+
+        println!("{:?}", dist);
     }
-
-    println!("{:?}", cs);
-
-    // let f = MonotoneFunction::<K>::new(vec![
-    //     Bits::<K>::from_str("1010").unwrap(),
-    //     Bits::<K>::from_str("1000").unwrap(),
-    // ]);
-
-    // let mut learner = Learner::<K>::new(f);
-
-    // let dot = format!(
-    //     "{:?}",
-    //     Dot::with_config(&learner.graph(), &[Config::EdgeNoLabel])
-    // );
-    // let mut out = File::create("./test0.dot").expect("Unable to create file");
-    // out.write_all(dot.as_bytes()).expect("Unable to write data");
-
-    // learner.iterate();
-    // learner.iterate();
-
-    // let dot = format!(
-    //     "{:?}",
-    //     Dot::with_config(&learner.graph(), &[Config::EdgeNoLabel])
-    // );
-    // let mut out = File::create("./test1.dot").expect("Unable to create file");
-    // out.write_all(dot.as_bytes()).expect("Unable to write data");
 }
