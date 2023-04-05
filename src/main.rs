@@ -1,13 +1,9 @@
-use std::{collections::HashSet};
+use std::collections::HashSet;
 mod bits;
 use bits::Bits;
 mod util;
-use petgraph::{
-    graph::NodeIndex,
-    Graph, Undirected,
-};
-
-use std::{collections::HashMap};
+use petgraph::{graph::NodeIndex, Graph, Undirected};
+use std::{collections::HashMap, str::FromStr};
 
 #[derive(Clone, Debug)]
 pub struct MonotoneFunction<const N: usize> {
@@ -62,16 +58,12 @@ impl<const N: usize> Learner<N> {
 
             let eet = Bits::<N>::new(false);
             let tee = Bits::<N>::new(true);
+            let x = eet.rand_midpoint(&tee).unwrap();
 
-            // TODO add random_midpoint function
-            for x in eet.midpoints(&tee).unwrap() {
-                if self.oracle.call(x) {
-                    self.upper_frontier.insert(x);
-                } else {
-                    self.lower_frontier.insert(x);
-                }
-
-                break;
+            if self.oracle.call(x) {
+                self.upper_frontier.insert(x);
+            } else {
+                self.lower_frontier.insert(x);
             }
         }
 
@@ -135,7 +127,7 @@ impl<const N: usize> Learner<N> {
     }
 }
 
-const K: usize = 4;
+const K: usize = 8;
 
 fn main() {
     let mut bs = Vec::<Bits<K>>::new();
@@ -144,6 +136,22 @@ fn main() {
         let b = n.try_into().unwrap();
         bs.push(b);
     }
+
+    let b0 = Bits::<K>::from_str("00000000").unwrap();
+    let b1 = Bits::<K>::from_str("11111111").unwrap();
+    let mut cs = [0_usize; K];
+
+    for _ in 0..100000 {
+        let t0 = b1.rand_midpoint(&b0).unwrap();
+
+        for j in 0..t0.len() {
+            if t0[j] {
+                cs[j] += 1;
+            }
+        }
+    }
+
+    println!("{:?}", cs);
 
     // let f = MonotoneFunction::<K>::new(vec![
     //     Bits::<K>::from_str("1010").unwrap(),

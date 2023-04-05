@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
-
 use itertools::{Combinations, Itertools};
+use rand::{thread_rng, Rng};
 use std::{
     cmp::Ordering,
     collections::{HashSet, VecDeque},
@@ -13,6 +13,8 @@ use std::{
     },
     str::FromStr,
 };
+
+use crate::util::rand_combination;
 
 #[derive(Debug)]
 pub struct Zeroes<const N: usize> {
@@ -489,6 +491,34 @@ impl<const N: usize> Bits<N> {
         }
 
         Ok((*self ^ *other).count_ones())
+    }
+
+    pub fn rand_midpoint(&self, other: &Bits<N>) -> Result<Bits<N>, IncomparableError> {
+        if self.partial_cmp(other).is_none() {
+            return Err(IncomparableError);
+        }
+
+        let origin = if *self > *other { *other } else { *self };
+        let diff = *self ^ *other;
+        let size = diff.count_ones();
+        let mut rng = thread_rng();
+
+        // Account for cases where number of ones is not even
+        let count = if size % 2 == 0 || rng.gen_bool(0.5) {
+            size / 2
+        } else {
+            (size / 2) + 1
+        };
+
+        let ones = Vec::from_iter(diff.ones());
+        let indices = rand_combination(&ones, count);
+        let mut target = origin;
+
+        for i in indices {
+            target[i] = true;
+        }
+
+        Ok(target)
     }
 
     pub fn horizon(&self, lower: bool) -> Horizon<N> {
